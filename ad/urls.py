@@ -37,6 +37,7 @@ urlpatterns = [
     path('rule/add', rule_view.add),
     path('rule/update', rule_view.update),
     path('rule/delete', rule_view.delete),
+    path('rule/hint', rule_view.hint),
 
     path('match_result/get', match_result_view.get),
     path('match_result/download', match_result_view.download),

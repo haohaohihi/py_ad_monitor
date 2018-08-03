@@ -104,11 +104,14 @@ def get(request):
         class_names = data.get("category")
         channel_names = data.get("channel")
         data = generate_match_data(channel_names, class_names, cover_areas, dates, firm_names, tags, times, weekdays)
-        return JsonResponse({
-            "data": data,
-            "status": 0,
-            "msg": "success"
-        })
+        if data:
+            return JsonResponse({
+                "data": data,
+                "status": 0,
+                "msg": "success"
+            })
+        else:
+            return JsonResponse(data_not_exist_error)
     except JSONDecodeError as e:
         logger.error(repr(e))
         return JsonResponse(json_format_error)
@@ -117,101 +120,6 @@ def get(request):
         return JsonResponse(system_error)
 
 
-def generate_xls_file(data):
-    filename = datetime.today().strftime("%Y_%m_%d_%H_%M_%S") + ".xls"
-    xls = xlwt.Workbook()
-    table = xls.add_sheet("result")
-
-    table.write(0, 0, "区域")
-    table.write(0, 1, "省份")
-    table.write(0, 2, "城市")
-    table.write(0, 3, "频道")
-
-    table.write(0, 4, "大类")
-    table.write(0, 5, "中类")
-    table.write(0, 6, "小类")
-    table.write(0, 7, "产品描述")
-    table.write(0, 8, "版本描述")
-    table.write(0, 9, "关键词")
-
-    table.write(0, 10, "星期")
-    table.write(0, 11, "匹配日期")
-    table.write(0, 12, "匹配开始时间")
-    table.write(0, 13, "匹配时间长度")
-    table.write(0, 14, "季度")
-
-    table.write(0, 15, "频道费用")
-
-    table.write(0, 16, "品牌")
-    table.write(0, 17, "厂商")
-
-    table.write(0, 18, "首播日期")
-
-    table.write(0, 19, "正排位置")
-    table.write(0, 20, "倒排位置")
-    table.write(0, 21, "总位置")
-    table.write(0, 22, "前节目")
-    table.write(0, 23, "前广告")
-    table.write(0, 24, "前广告类型")
-    table.write(0, 25, "后广告")
-    table.write(0, 26, "后广告类型")
-    table.write(0, 27, "后节目")
-
-    table.write(0, 28, "媒体文件")
-
-    i = 0
-    for d in data:
-        i += 1
-        table.write(i, 0, d.get("coverArea"))
-        table.write(i, 1, d.get("coverProvince"))
-        table.write(i, 2, d.get("coverCity"))
-        table.write(i, 3, d.get("channel"))
-
-        table.write(i, 4, d.get("majorClass"))
-        table.write(i, 5, d.get("mediumClass"))
-        table.write(i, 6, d.get("fineClass"))
-        table.write(i, 7, d.get("description"))
-        table.write(i, 8, d.get("ver_description"))
-        table.write(i, 9, d.get("tags"))
-
-        table.write(i, 10, d.get("weekDay"))
-        print(d.get("date"))
-        table.write(i, 11, d.get("date"))
-        table.write(i, 12, d.get("time"))
-        table.write(i, 13, d.get("duration"))
-        table.write(i, 14, d.get("season"))
-
-        table.write(i, 15,d.get("fee"))
-
-        table.write(i, 16, d.get("mainBrand"))
-        table.write(i, 17, d.get("manufactory"))
-
-        table.write(i, 18, d.get("preDate"))
-
-        table.write(i, 19, d.get("pPos"))
-        table.write(i, 20, d.get("nPos"))
-        table.write(i, 21, d.get("totalPos"))
-        table.write(i, 22, d.get("proBefore"))
-        table.write(i, 23, d.get("adBefore"))
-        table.write(i, 24, d.get("adBeforeType"))
-        table.write(i, 25, d.get("adAfter"))
-        table.write(i, 26, d.get("adAfterType"))
-        table.write(i, 27, d.get("proAfter"))
-
-        table.write(i, 28, d.get("mediaFile"))
-
-    xls.save(os.path.join(download_dir, filename))
-    return filename
-
-
-def file_iterator(file_name, chunk_size=512):  # 用于形成二进制数据
-    with open(file_name, 'rb') as f:
-        while True:
-            c = f.read(chunk_size)
-            if c:
-                yield c
-            else:
-                break
 
 def download(request):
     try:
@@ -286,6 +194,14 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
                 if (cur_date - r.start_time.replace(tzinfo=None)).days <= 30:
                     temp_match_result.append(r)
         match_results = temp_match_result
+    else:
+        print("lslslslsl")
+        temp_match_result = []
+        cur_date = datetime.today()
+        for r in match_results:
+            if (cur_date - r.start_time.replace(tzinfo=None)).days <= 30:
+                temp_match_result.append(r)
+        match_results = temp_match_result
 
     # 过滤星期几
     if weekdays:
@@ -331,7 +247,11 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
         ad = Ad.objects.get(id=r.ad_id)
         channel = Channel.objects.get(id=r.channel_id)
         ad_classes = get_classes_by_ad(ad)
-        ad_charge = get_ad_charge(channel.id, r.start_time, r.end_time)[0]
+
+        ad_charge = get_ad_charge(channel.id, r.start_time, r.end_time)
+        if not ad_charge:
+            continue
+        ad_charge = ad_charge[0]
 
         all_matched_in_ad_charge = get_all_matched_in_ad_charge(ad_charge)
         cur_index = all_matched_in_ad_charge.index(r)
@@ -380,3 +300,100 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
         }
         data.append(d)
     return data
+
+
+def generate_xls_file(data):
+    filename = datetime.today().strftime("%Y_%m_%d_%H_%M_%S") + ".xls"
+    xls = xlwt.Workbook()
+    table = xls.add_sheet("result")
+
+    table.write(0, 0, "区域")
+    table.write(0, 1, "省份")
+    table.write(0, 2, "城市")
+    table.write(0, 3, "频道")
+
+    table.write(0, 4, "大类")
+    table.write(0, 5, "中类")
+    table.write(0, 6, "小类")
+    table.write(0, 7, "产品描述")
+    table.write(0, 8, "版本描述")
+    table.write(0, 9, "关键词")
+
+    table.write(0, 10, "星期")
+    table.write(0, 11, "匹配日期")
+    table.write(0, 12, "匹配开始时间")
+    table.write(0, 13, "匹配时间长度")
+    table.write(0, 14, "季度")
+
+    table.write(0, 15, "频道费用")
+
+    table.write(0, 16, "品牌")
+    table.write(0, 17, "厂商")
+
+    table.write(0, 18, "首播日期")
+
+    table.write(0, 19, "正排位置")
+    table.write(0, 20, "倒排位置")
+    table.write(0, 21, "总位置")
+    table.write(0, 22, "前节目")
+    table.write(0, 23, "前广告")
+    table.write(0, 24, "前广告类型")
+    table.write(0, 25, "后广告")
+    table.write(0, 26, "后广告类型")
+    table.write(0, 27, "后节目")
+
+    table.write(0, 28, "媒体文件")
+
+    i = 0
+    for d in data:
+        i += 1
+        table.write(i, 0, d.get("coverArea"))
+        table.write(i, 1, d.get("coverProvince"))
+        table.write(i, 2, d.get("coverCity"))
+        table.write(i, 3, d.get("channel"))
+
+        table.write(i, 4, d.get("majorClass"))
+        table.write(i, 5, d.get("mediumClass"))
+        table.write(i, 6, d.get("fineClass"))
+        table.write(i, 7, d.get("description"))
+        table.write(i, 8, d.get("ver_description"))
+        table.write(i, 9, d.get("tags"))
+
+        table.write(i, 10, d.get("weekDay"))
+        print(d.get("date"))
+        table.write(i, 11, d.get("date"))
+        table.write(i, 12, d.get("time"))
+        table.write(i, 13, d.get("duration"))
+        table.write(i, 14, d.get("season"))
+
+        table.write(i, 15, d.get("fee"))
+
+        table.write(i, 16, d.get("mainBrand"))
+        table.write(i, 17, d.get("manufactory"))
+
+        table.write(i, 18, d.get("preDate"))
+
+        table.write(i, 19, d.get("pPos"))
+        table.write(i, 20, d.get("nPos"))
+        table.write(i, 21, d.get("totalPos"))
+        table.write(i, 22, d.get("proBefore"))
+        table.write(i, 23, d.get("adBefore"))
+        table.write(i, 24, d.get("adBeforeType"))
+        table.write(i, 25, d.get("adAfter"))
+        table.write(i, 26, d.get("adAfterType"))
+        table.write(i, 27, d.get("proAfter"))
+
+        table.write(i, 28, d.get("mediaFile"))
+
+    xls.save(os.path.join(download_dir, filename))
+    return filename
+
+
+def file_iterator(file_name, chunk_size=512):  # 用于形成二进制数据
+    with open(file_name, 'rb') as f:
+        while True:
+            c = f.read(chunk_size)
+            if c:
+                yield c
+            else:
+                break

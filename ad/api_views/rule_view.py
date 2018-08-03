@@ -8,7 +8,7 @@ import math
 import datetime
 from django.db import IntegrityError
 from django.http import HttpResponse, JsonResponse
-from ..models import Rule, Firm, AdClass
+from ..models import Rule, Firm, AdClass, Ad, Channel
 from ..error_msg import *
 logger = logging.getLogger("ad")
 
@@ -65,9 +65,21 @@ def add(request):
             rule = exist_rule[0]
             rule.valid = 1
         else:
-            rule = Rule(name=data.get("name"), update_date=datetime.date.today(), weekdays=data.get("weekDay"),
-                        times=data.get("time"), cover_areas=data.get("coverArea"), firm_names=data.get("manufactory"),
-                        class_names=data.get("category"), tags=data.get("tag"), channel_names=data.get("channel"))
+            rule = Rule(name=data.get("name"), update_date=datetime.date.today())
+            if data.get("weekDay"):
+                rule.weekdays = data.get("weekDay")
+            if data.get("time"):
+                rule.times = data.get("time")
+            if data.get("coverArea"):
+                rule.cover_areas = data.get("coverArea")
+            if data.get("manufactory"):
+                rule.firm_names = data.get("manufactory")
+            if data.get("category"):
+                rule.class_names = data.get("category")
+            if data.get("tag"):
+                rule.tags = data.get("tag")
+            if data.get("channel"):
+                rule.channel_names = data.get("channel")
         rule.save()
     except JSONDecodeError as e:
         logger.error(repr(e))
@@ -169,4 +181,41 @@ def delete(request):
         "status": 0,
         "msg": "删除数据成功",
         "id": result_idxs
+    })
+
+
+def hint(request):
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+        type = data["category"]
+        query_word = data["query"]
+    except JSONDecodeError as e:
+        logger.error(repr(e))
+        return JsonResponse(json_format_error)
+    except KeyError as e:
+        logger.error(repr(e))
+        return JsonResponse(lack_param_error)
+    data = []
+    if "厂商" == type:
+        firms = Firm.objects.filter(name__contains=query_word, valid=1)
+        data = [f.name for f in firms]
+    elif "标签" == type:
+        ads = Ad.objects.filter(tags__contains=query_word, valid=1)
+        print(ads)
+        tags = set()
+        for a in ads:
+            tags = tags.union(eval(a.tags))
+        data = list(tags)
+    elif "类别" == type:
+        ad_class = AdClass.objects.filter(name__contains=query_word, is_using=1)
+        data = [c.name for c in ad_class]
+    elif "频道" == type:
+        channels = Channel.objects.filter(name__contains=query_word, valid=1)
+        data = [c.name for c in channels]
+    else:
+        pass
+    return JsonResponse({
+        "status": 0,
+        "msg": "success",
+        "data": data
     })
