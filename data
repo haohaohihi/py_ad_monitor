@@ -1,0 +1,11 @@
+{
+	"currentPageNum": 1,
+	"pageSize": 3,
+	"name":  ["北京2套", "中央4套"],
+	"area":  ["华北","北京"],
+	"province": ["浙江"],
+	"city":  ["浙江"],
+	"coverArea":  ["全国"],
+	"coverProvince":  ["全国"],
+	"coverCity": ["浙江"]
+}
