@@ -160,6 +160,7 @@ class Monitor(models.Model):
     id = models.BigAutoField(primary_key=True)
     type = models.CharField(max_length=255)
     ip = models.CharField(max_length=255)
+    has_task = models.IntegerField(db_column="task")
     channel = models.CharField(max_length=255, db_column='task_on')
     problem = models.IntegerField()
     start_time = models.CharField(max_length=255, db_column='starttime')
@@ -168,3 +169,21 @@ class Monitor(models.Model):
     class Meta:
         managed = False
         db_table = 'monitor'
+
+
+class Task(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    is_running = models.IntegerField(null=False)
+    channel_id = models.BigIntegerField(db_column="channelid", null=False)
+    monitor_id = models.BigIntegerField(db_column="monitorid", null=False)
+    type = models.CharField(max_length=255, null=False)
+    nas_ip = models.CharField(max_length=255, null=False, db_column="nas_Ip")
+    start_time = models.CharField(max_length=255, db_column='starttime')
+    end_time = models.CharField(max_length=255, db_column='endtime')
+    ts_ip = models.CharField(max_length=255, null=False, db_column="ts_ip")
+    ts_port = models.IntegerField(db_column="port")
+    create_time = models.CharField(max_length=255, db_column='create_time')
+
+    class Meta:
+        managed = False
+        db_table = 'task'

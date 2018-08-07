@@ -21,6 +21,16 @@ data_not_exist_error = {
     "msg": "未查找到数据"
 }
 
+not_enough_monitor = {
+    "status": -403,
+    "msg": "没有可用的monitor"
+}
+
+channel_not_found = {
+    "status": -405,
+    "msg": "没有找到频道，请确认频道名"
+}
+
 system_error = {
     "status": -500,
     "msg": "系统错误"

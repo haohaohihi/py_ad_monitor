@@ -1,7 +1,7 @@
 from django.urls import path
 
-from .api_views import ad_class_view, channel_view, charge_view, ad_view, firm_view,\
-    rule_view, match_result_view, monitor_view
+from .api_views import ad_class_view, channel_view, charge_view, ad_view, firm_view, \
+    rule_view, match_result_view, monitor_view, task_view
 
 urlpatterns = [
     path('catg/get', ad_class_view.get),
@@ -43,4 +43,8 @@ urlpatterns = [
     path('match_result/download', match_result_view.download),
 
     path('monitor/status', monitor_view.status),
+
+    path('task/add', task_view.add),
+    path('task/get', task_view.get),
+    path('task/cancel', task_view.cancel)
 ]
