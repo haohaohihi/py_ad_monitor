@@ -1,20 +1,21 @@
 import json
 import logging
-import os
+import time
 from json import JSONDecodeError
 
-import math
-import time
-import datetime
 from django.db import IntegrityError, transaction
-from django.http import HttpResponse, JsonResponse
-from ..models import Task, Monitor, Channel
+from django.http import JsonResponse
+
 from ..error_msg import *
+from ..models import Task, Monitor, Channel
+from ..utils.decorators import need_login
 
 logger = logging.getLogger("ad")
 
 
+@need_login
 def get(request):
+    # print(request.session["user_id"])
     try:
         data = json.loads(request.body.decode("utf-8"))
         date = data["date"]
@@ -27,8 +28,8 @@ def get(request):
     tasks = Task.objects.all()
     valid_tasks = []
     for t in tasks:
-        if t.create_time and time.strftime("%Y-%m-%d",
-                                           time.localtime(int(t.create_time))) == date and t.type != "refclip":
+        if t.start_time and time.strftime("%Y-%m-%d",
+                                           time.localtime(int(t.start_time ) // 1000)) == date and t.type != "refclip":
             valid_tasks.append(t)
     data = []
     for t in valid_tasks:
@@ -50,6 +51,7 @@ def get(request):
     })
 
 
+@need_login
 def add(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -69,8 +71,12 @@ def add(request):
 
         with transaction.atomic():
             task = Task(is_running=0, channel_id=channel.id, monitor_id=monitor.id, type=m_type,
-                        nas_ip=data.get("nas_Ip"), start_time=data.get("startTime"), end_time=data.get("endTime"),
-                        ts_ip=data.get("ts_ip"), ts_port=data.get("port"), create_time=int(time.time()))
+                        nas_ip=data.get("nas_Ip") if data.get("nas_Ip") else None,
+                        start_time=data.get("startTime") if data.get("startTime") else None,
+                        end_time=data.get("endTime") if data.get("endTime") else None,
+                        ts_ip=data.get("ts_ip") if data.get("ts_ip") else None,
+                        ts_port=data.get("port") if data.get("port") else None,
+                        create_time=int(time.time()))
             monitor.channel = channel.name
             monitor.has_task = 1
             monitor.save()
@@ -91,6 +97,7 @@ def add(request):
     })
 
 
+@need_login
 def cancel(request):
     try:
         data = json.loads(request.body.decode("utf-8"))

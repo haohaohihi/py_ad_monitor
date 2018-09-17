@@ -1,17 +1,16 @@
-import os
-import xlwt
 import json
 import logging
+import os
 from datetime import datetime
 from json import JSONDecodeError
 
-import math
-from django.db import IntegrityError
-from django.http import HttpResponse, JsonResponse
+import xlwt
+from django.http import JsonResponse
 from django.http import StreamingHttpResponse
 
-from ..models import Ad, Firm, AdClass, Channel, ChannelAdCharge, MatchResult
+from ad.utils.decorators import need_login
 from ..error_msg import *
+from ..models import Ad, Firm, AdClass, Channel, ChannelAdCharge, MatchResult
 
 download_dir = "download_files"
 logger = logging.getLogger("ad")
@@ -85,11 +84,14 @@ def get_all_matched_in_ad_charge(ad_charge):
     match_result = MatchResult.objects.filter(channel_id=ad_charge.channel_id)
     temp_result = []
     for r in match_result:
-        if r.start_time.weekday() == (ad_charge.weekday - 1) and r.start_time.time() > ad_charge.start_time and r.end_time.time() < ad_charge.end_time:
+        if r.start_time.weekday() == (
+                ad_charge.weekday - 1) and r.start_time.time() > ad_charge.start_time and r.end_time.time() < ad_charge.end_time:
             temp_result.append(r)
     match_result = temp_result
     return match_result
 
+
+@need_login
 def get(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -103,15 +105,6 @@ def get(request):
         tags = data.get("tag")
         class_names = data.get("category")
         channel_names = data.get("channel")
-        data = generate_match_data(channel_names, class_names, cover_areas, dates, firm_names, tags, times, weekdays)
-        if data:
-            return JsonResponse({
-                "data": data,
-                "status": 0,
-                "msg": "success"
-            })
-        else:
-            return JsonResponse(data_not_exist_error)
     except JSONDecodeError as e:
         logger.error(repr(e))
         return JsonResponse(json_format_error)
@@ -119,8 +112,18 @@ def get(request):
         logger.error(repr(e))
         return JsonResponse(system_error)
 
+    data = generate_match_data(channel_names, class_names, cover_areas, dates, firm_names, tags, times, weekdays)
+    if data:
+        return JsonResponse({
+            "data": data,
+            "status": 0,
+            "msg": "success"
+        })
+    else:
+        return JsonResponse(data_not_exist_error)
 
 
+@need_login
 def download(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -153,18 +156,19 @@ def download(request):
 
 def generate_match_data(channel_names, class_names, cover_areas, dates, firm_names, tags, times, weekdays):
     # 过滤channels, 模糊过滤
-    if channel_names:
-        for n in channel_names:
-            channels = Channel.objects.filter(name__contains=n, valid=1)
+    if channel_names and channel_names[0]:
+        channels = Channel.objects.filter(name__contains=channel_names[0], valid=1)
     else:
         channels = Channel.objects.filter(valid=1)
     # print(channels)
     # 过滤区域
-    if cover_areas:
-        channels = channels.filter(cover_area=cover_areas[0], cover_province=cover_areas[1], cover_city=cover_areas[1])
+    if cover_areas and cover_areas[0] and cover_areas[1] and cover_areas[2]:
+        channels = channels.filter(cover_area=cover_areas[0], cover_province=cover_areas[1], cover_city=cover_areas[2])
     # 根据频道id获取所有的匹配结果，再进行下一步的过滤
     channel_ids = [channel.id for channel in channels]
+    logger.info(channel_ids);
     match_results = MatchResult.objects.filter(channel_id__in=channel_ids, valid=1)
+    logger.info(match_results)
     # 过滤日期+时间
     # 只有日期
     if dates and not times:
@@ -195,14 +199,13 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
                     temp_match_result.append(r)
         match_results = temp_match_result
     else:
-        print("lslslslsl")
         temp_match_result = []
         cur_date = datetime.today()
         for r in match_results:
             if (cur_date - r.start_time.replace(tzinfo=None)).days <= 30:
                 temp_match_result.append(r)
         match_results = temp_match_result
-
+    logger.info(match_results)
     # 过滤星期几
     if weekdays:
         temp_match_result = []
@@ -211,7 +214,7 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
             if r.start_time.weekday() + 1 in weekdays:
                 temp_match_result.append(r)
         match_results = temp_match_result
-
+    logger.info(match_results)
     # 过滤厂商
     if firm_names:
         temp_match_result = []
@@ -220,7 +223,7 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
                 if Firm.objects.filter(id=Ad.objects.get(id=r.ad_id).firm_id, name__contains=name, valid=1):
                     temp_match_result.append(r)
         match_results = temp_match_result
-
+    logger.info(match_results)
     # 过滤标签
     if tags:
         temp_match_result = []
@@ -229,7 +232,7 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
                 if Ad.objects.filter(id=r.ad_id, tags__contains=tag, valid=1):
                     temp_match_result.append(r)
         match_results = temp_match_result
-
+    logger.info(match_results)
     # 过滤分类
     if class_names:
         # [bug fixed] 改成set，避免重复数据
@@ -240,13 +243,15 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
                 if c_name in get_classes_by_ad(ad):
                     temp_match_result.add(r)
         match_results = temp_match_result
-
+    logger.info(match_results)
     ## 组装数据
     data = []
     for r in match_results:
         ad = Ad.objects.get(id=r.ad_id)
         channel = Channel.objects.get(id=r.channel_id)
         ad_classes = get_classes_by_ad(ad)
+
+        logger.info(ad_classes)
 
         ad_charge = get_ad_charge(channel.id, r.start_time, r.end_time)
         if not ad_charge:
@@ -274,8 +279,8 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
             "description": ad.pro_desc,
             "ver_description": ad.ver_desc,
             "majorClass": ad_classes[0],
-            "mediumClass": ad_classes[1],
-            "fineClass": ad_classes[2],
+            "mediumClass": ad_classes[1] if len(ad_classes) > 1 else "",
+            "fineClass": ad_classes[2] if len(ad_classes) > 2 else "",
             "tags": " | ".join(eval(ad.tags)),
             "mainBrand": ad.brand,
             "manufactory": Firm.objects.get(id=ad.firm_id).name,

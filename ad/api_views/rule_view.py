@@ -1,18 +1,19 @@
+import datetime
 import json
 import logging
-import os
 from json import JSONDecodeError
 
-import math
-
-import datetime
 from django.db import IntegrityError
-from django.http import HttpResponse, JsonResponse
-from ..models import Rule, Firm, AdClass, Ad, Channel
+from django.http import JsonResponse
+
+from ad.utils.decorators import need_login
 from ..error_msg import *
+from ..models import Rule, Firm, AdClass, Ad, Channel
+
 logger = logging.getLogger("ad")
 
 
+@need_login
 def get(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -31,7 +32,7 @@ def get(request):
     rules = Rule.objects.filter(name__contains=query_key, valid=1) if query_key else Rule.objects.filter(valid=1)
     # total = math.ceil(len(rules) / page_size)
     total = len(rules)
-    rules = rules.order_by('id')[(page_idx - 1) * page_size: page_idx * page_size]
+    rules = rules.order_by('-id')[(page_idx - 1) * page_size: page_idx * page_size]
     result = {
         "status": 0,
         "msg": "success",
@@ -56,6 +57,7 @@ def get(request):
     return JsonResponse(result)
 
 
+@need_login
 def add(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -96,6 +98,7 @@ def add(request):
     })
 
 
+@need_login
 def update(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -155,6 +158,7 @@ def update(request):
     })
 
 
+@need_login
 def delete(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -184,6 +188,7 @@ def delete(request):
     })
 
 
+@need_login
 def hint(request):
     try:
         data = json.loads(request.body.decode("utf-8"))

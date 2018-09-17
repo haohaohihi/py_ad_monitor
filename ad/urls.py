@@ -1,7 +1,7 @@
 from django.urls import path
 
 from .api_views import ad_class_view, channel_view, charge_view, ad_view, firm_view, \
-    rule_view, match_result_view, monitor_view, task_view
+    rule_view, match_result_view, monitor_view, task_view, user_view
 
 urlpatterns = [
     path('catg/get', ad_class_view.get),
@@ -46,5 +46,9 @@ urlpatterns = [
 
     path('task/add', task_view.add),
     path('task/get', task_view.get),
-    path('task/cancel', task_view.cancel)
+    path('task/cancel', task_view.cancel),
+
+    path('user/login', user_view.login),
+    path('user/logout', user_view.logout),
+    path('user/need_login', user_view.need_login_msg),
 ]

@@ -1,18 +1,20 @@
 import json
 import logging
-import os
 from json import JSONDecodeError
 
-import math
 from django.db import IntegrityError
 from django.http import HttpResponse, JsonResponse
-from ..models import Ad, Firm, AdClass, Firm
+
+from ad.utils.decorators import need_login
 from ..error_msg import *
+from ..models import Ad, AdClass, Firm
+
 logger = logging.getLogger("ad")
+
 
 # Create your views here.
 
-
+@need_login
 def get(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -36,7 +38,7 @@ def get(request):
         # 按照描述过滤
         q_ads_2 = Ad.objects.filter(pro_desc__contains=query_key, valid=1)
         # 按照小类过滤
-        third_catgs =  AdClass.objects.filter(name__contains=query_key, is_using=1)
+        third_catgs = AdClass.objects.filter(name__contains=query_key, is_using=1)
         third_catg_ids = [c.class_item_id for c in third_catgs]
         q_ads_3 = Ad.objects.filter(catg_id__in=third_catg_ids, valid=1)
         # 按照厂商名过滤
@@ -49,7 +51,7 @@ def get(request):
     # total = math.ceil(len(ads) / page_size)
 
     total = len(ads)
-    ads = ads.order_by('id')[(page_idx - 1) * page_size: page_idx * page_size]
+    ads = ads.order_by('-id')[(page_idx - 1) * page_size: page_idx * page_size]
     result = {
         "status": 0,
         "msg": "success",
@@ -82,6 +84,7 @@ def get_by_id(request):
     return HttpResponse("get by id")
 
 
+@need_login
 def add(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -110,6 +113,7 @@ def add(request):
     })
 
 
+@need_login
 def update(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -145,6 +149,7 @@ def update(request):
     })
 
 
+@need_login
 def delete(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -172,4 +177,3 @@ def delete(request):
         "msg": "删除数据成功",
         "id": result_idxs
     })
-

@@ -1,21 +1,20 @@
 import json
 import logging
-
-import math
-from django.http import HttpResponse, JsonResponse
-from ..models import Channel
-
 from json.decoder import JSONDecodeError
-from django.db import IntegrityError
 
+from django.db import IntegrityError
+from django.http import JsonResponse
+
+from ad.utils.decorators import need_login
 from ..error_msg import *
+from ..models import Channel
 
 logger = logging.getLogger("ad")
 
 
 # Create your views here.
 
-
+@need_login
 def get(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -33,8 +32,9 @@ def get(request):
 
     # 在valide=1（表示存在）的数据中进行下一步过滤
     channels = Channel.objects.filter(valid=1)
-    if data.get("name"):
-        channels = channels.filter(name__in=data.get("name"))
+    if data.get("name") and data.get("name")[0]:
+        channel_name = data.get("name")[0]
+        channels = channels.filter(name__icontains=channel_name)
     if data.get("area"):
         channels = channels.filter(area__in=data.get("area"))
     if data.get("province"):
@@ -49,7 +49,7 @@ def get(request):
         channels = channels.filter(cover_city__in=data.get("coverCity"))
     # total = math.ceil(len(channels) / page_size)
     total = len(channels)
-    channels = channels.order_by('id')[(page_idx - 1) * page_size: page_idx * page_size]
+    channels = channels.order_by('-id')[(page_idx - 1) * page_size: page_idx * page_size]
     result = {
         "status": 0,
         "msg": "success",
@@ -73,6 +73,7 @@ def get(request):
     return JsonResponse(result)
 
 
+@need_login
 def get_by_id(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -109,6 +110,7 @@ def get_by_id(request):
     })
 
 
+@need_login
 def add(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -137,6 +139,7 @@ def add(request):
     })
 
 
+@need_login
 def update(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -169,6 +172,7 @@ def update(request):
     })
 
 
+@need_login
 def delete(request):
     try:
         data = json.loads(request.body.decode("utf-8"))

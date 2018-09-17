@@ -156,6 +156,7 @@ class Rule(models.Model):
         managed = False
         db_table = 'rule'
 
+
 class Monitor(models.Model):
     id = models.BigAutoField(primary_key=True)
     type = models.CharField(max_length=255)
@@ -187,3 +188,13 @@ class Task(models.Model):
     class Meta:
         managed = False
         db_table = 'task'
+
+
+class AdminUser(models.Model):
+    id = models.BigAutoField(primary_key=True, db_column="userid")
+    username = models.CharField(max_length=255, null=False, db_column="user_name")
+    password = models.CharField(max_length=255, null=False, db_column="passwd")
+
+    class Meta:
+        managed = False
+        db_table = 'user_tab'

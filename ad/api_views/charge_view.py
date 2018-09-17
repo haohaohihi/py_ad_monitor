@@ -4,6 +4,8 @@ from json import JSONDecodeError
 
 from django.db import IntegrityError
 from django.http import HttpResponse, JsonResponse
+
+from ad.utils.decorators import need_login
 from ..models import ChannelAdCharge
 
 logger = logging.getLogger("ad")
@@ -13,6 +15,7 @@ from ..error_msg import *
 # Create your views here.
 
 
+@need_login
 def get(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -51,6 +54,7 @@ def get_by_id(request):
     return HttpResponse("get by id")
 
 
+@need_login
 def add(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -83,6 +87,7 @@ def add(request):
     })
 
 
+@need_login
 def update(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -116,6 +121,7 @@ def update(request):
     })
 
 
+@need_login
 def delete(request):
     try:
         data = json.loads(request.body.decode("utf-8"))

@@ -2,15 +2,17 @@ import json
 import logging
 from json import JSONDecodeError
 
-import math
 from django.db import IntegrityError
-from django.http import HttpResponse, JsonResponse
-from ..models import Firm
+from django.http import JsonResponse
+
+from ad.utils.decorators import need_login
 from ..error_msg import *
+from ..models import Firm
 
 logger = logging.getLogger("ad")
 
 
+@need_login
 def get(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -30,7 +32,7 @@ def get(request):
     firms = Firm.objects.filter(name__contains=query_key, valid=1) if query_key else Firm.objects.filter(valid=1)
     # total = math.ceil(len(firms) / page_size)
     total = len(firms)
-    firms = firms.order_by('id')[(page_idx - 1) * page_size: page_idx * page_size]
+    firms = firms.order_by('-id')[(page_idx - 1) * page_size: page_idx * page_size]
     result = {
         "status": 0,
         "msg": "success",
@@ -47,6 +49,7 @@ def get(request):
     return JsonResponse(result)
 
 
+@need_login
 def add(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -73,6 +76,7 @@ def add(request):
     })
 
 
+@need_login
 def update(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -99,6 +103,7 @@ def update(request):
     })
 
 
+@need_login
 def delete(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
