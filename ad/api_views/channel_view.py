@@ -14,7 +14,7 @@ logger = logging.getLogger("ad")
 
 # Create your views here.
 
-@need_login
+@need_login()
 def get(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -73,7 +73,7 @@ def get(request):
     return JsonResponse(result)
 
 
-@need_login
+@need_login()
 def get_by_id(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -110,7 +110,7 @@ def get_by_id(request):
     })
 
 
-@need_login
+@need_login()
 def add(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -139,7 +139,7 @@ def add(request):
     })
 
 
-@need_login
+@need_login()
 def update(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -172,7 +172,7 @@ def update(request):
     })
 
 
-@need_login
+@need_login()
 def delete(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -200,3 +200,15 @@ def delete(request):
         "msg": "删除数据成功",
         "id": result_idxs
     })
+
+
+def get_channel_dict(channel_id):
+    try:
+        channel = Channel.objects.get(id=channel_id)
+        return {
+            "id": channel.id,
+            "name": channel.name,
+        }
+    except Exception as e:
+        logger.error(repr(e))
+        return None

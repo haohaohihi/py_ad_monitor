@@ -4,7 +4,7 @@ from ad.utils.decorators import need_login
 from ..models import Monitor
 
 
-@need_login
+@need_login()
 def status(request):
     monitors = Monitor.objects.all()
     data = []

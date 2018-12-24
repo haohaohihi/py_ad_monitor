@@ -1,3 +1,4 @@
+#-*- coding:utf-8 -*-
 import json
 import logging
 import os
@@ -91,7 +92,7 @@ def get_all_matched_in_ad_charge(ad_charge):
     return match_result
 
 
-@need_login
+@need_login()
 def get(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -123,7 +124,7 @@ def get(request):
         return JsonResponse(data_not_exist_error)
 
 
-@need_login
+@need_login()
 def download(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -164,14 +165,20 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
     # 过滤区域
     if cover_areas and cover_areas[0] and cover_areas[1] and cover_areas[2]:
         channels = channels.filter(cover_area=cover_areas[0], cover_province=cover_areas[1], cover_city=cover_areas[2])
+    # print(channels)
     # 根据频道id获取所有的匹配结果，再进行下一步的过滤
     channel_ids = [channel.id for channel in channels]
-    logger.info(channel_ids);
+    logger.info(channel_ids)
+    # print(channel_ids)
     match_results = MatchResult.objects.filter(channel_id__in=channel_ids, valid=1)
     logger.info(match_results)
+    # print(match_results)
     # 过滤日期+时间
+    logger.info(dates)
+    logger.info(times)
+    data_time_null = ["", ""]
     # 只有日期
-    if dates and not times:
+    if dates and dates != data_time_null and (not times or times == data_time_null):
         temp_match_result = []
         for r in match_results:
             # 先判断日期范围
@@ -179,7 +186,7 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
                 temp_match_result.append(r)
         match_results = temp_match_result
     # 有日期也有时间
-    elif dates and times:
+    elif dates and dates != data_time_null and times and times != data_time_null:
         temp_match_result = []
         for r in match_results:
             # 先判断日期范围
@@ -189,7 +196,7 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
                     temp_match_result.append(r)
         match_results = temp_match_result
     # 没有日期，只有时间
-    elif not dates and times:
+    elif (not dates or dates == data_time_null) and times and times != data_time_null:
         temp_match_result = []
         cur_date = datetime.today()
         for r in match_results:
@@ -198,6 +205,7 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
                 if (cur_date - r.start_time.replace(tzinfo=None)).days <= 30:
                     temp_match_result.append(r)
         match_results = temp_match_result
+    # 都没有
     else:
         temp_match_result = []
         cur_date = datetime.today()
@@ -210,8 +218,11 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
     if weekdays:
         temp_match_result = []
         for r in match_results:
-            # [bug fixed] datetime.weekday()起始为0
-            if r.start_time.weekday() + 1 in weekdays:
+            # [bug fixed] datetime.isoweekday() 为1-7，1表示周一，7表示周日
+            # 请求数据为0表示周日，1表示周一
+            logger.info(r.start_time.weekday())
+            logger.info(weekdays)
+            if r.start_time.isoweekday() % 7 in weekdays:
                 temp_match_result.append(r)
         match_results = temp_match_result
     logger.info(match_results)
@@ -249,25 +260,11 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
     for r in match_results:
         ad = Ad.objects.get(id=r.ad_id)
         channel = Channel.objects.get(id=r.channel_id)
-        ad_classes = get_classes_by_ad(ad)
 
+        ad_classes = get_classes_by_ad(ad)
         logger.info(ad_classes)
 
         ad_charge = get_ad_charge(channel.id, r.start_time, r.end_time)
-        if not ad_charge:
-            continue
-        ad_charge = ad_charge[0]
-
-        all_matched_in_ad_charge = get_all_matched_in_ad_charge(ad_charge)
-        cur_index = all_matched_in_ad_charge.index(r)
-        last_result = None if cur_index == 0 else all_matched_in_ad_charge[cur_index - 1]
-        last_ad = Ad.objects.get(id=last_result.ad_id) if last_result else None
-        last_classes = get_classes_by_ad(last_ad) if last_ad else None
-
-        next_result = None if cur_index == (len(all_matched_in_ad_charge) - 1) else all_matched_in_ad_charge[
-            cur_index + 1]
-        next_ad = Ad.objects.get(id=next_result.ad_id) if next_result else None
-        next_classes = get_classes_by_ad(next_ad) if next_ad else None
 
         d = {
             "date": r.start_time.strftime("%Y-%m-%d"),
@@ -278,34 +275,55 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
             "channel": channel.name,
             "description": ad.pro_desc,
             "ver_description": ad.ver_desc,
-            "majorClass": ad_classes[0],
-            "mediumClass": ad_classes[1] if len(ad_classes) > 1 else "",
-            "fineClass": ad_classes[2] if len(ad_classes) > 2 else "",
-            "tags": " | ".join(eval(ad.tags)),
+            "majorClass": ad_classes[0] if ad_classes else None,
+            "mediumClass": ad_classes[1] if len(ad_classes) > 1 else None,
+            "fineClass": ad_classes[2] if len(ad_classes) > 2 else None,
+            "tags": " | ".join(eval(ad.tags)) if ad.tags else None,
             "mainBrand": ad.brand,
-            "manufactory": Firm.objects.get(id=ad.firm_id).name,
-
-            "fee": get_fee(ad_charge, (r.end_time - r.start_time).seconds),
-            "preDate": "",
-            "proBefore": ad_charge.pro_before,
-            "totalPos": len(all_matched_in_ad_charge),
-            "pPos": cur_index + 1,
-            "nPos": len(all_matched_in_ad_charge) - cur_index,
-            "adBefore": last_ad.pro_desc if last_ad else None,
-            "adBeforeType": "/".join(last_classes) if last_ad else None,
-            "adAfter": next_ad.pro_desc if next_ad else None,
-            "adAfterType": "/".join(next_classes) if next_ad else None,
-            "proAfter": ad_charge.pro_after,
-
+            "manufactory": Firm.objects.get(id=ad.firm_id).name if ad.firm_id else None,
             "coverArea": channel.cover_area,
             "coverProvince": channel.cover_province,
             "coverCity": channel.cover_city,
             "mediaFile": ad.file_path,
             "nasIp": ad.nas_ip
         }
+
+        if ad_charge:
+
+            # 频道收费相关信息
+            ad_charge = ad_charge[0]
+
+            all_matched_in_ad_charge = get_all_matched_in_ad_charge(ad_charge)
+            cur_index = all_matched_in_ad_charge.index(r)
+            last_result = None if cur_index == 0 else all_matched_in_ad_charge[cur_index - 1]
+            last_ad = Ad.objects.get(id=last_result.ad_id) if last_result else None
+            last_classes = get_classes_by_ad(last_ad) if last_ad else None
+
+            next_result = None if cur_index == (len(all_matched_in_ad_charge) - 1) else all_matched_in_ad_charge[
+                cur_index + 1]
+            next_ad = Ad.objects.get(id=next_result.ad_id) if next_result else None
+            next_classes = get_classes_by_ad(next_ad) if next_ad else None
+
+            d.update({
+                "fee": get_fee(ad_charge, (r.end_time - r.start_time).seconds),
+                "preDate": "",
+                "proBefore": ad_charge.pro_before,
+                "totalPos": len(all_matched_in_ad_charge),
+                "pPos": cur_index + 1,
+                "nPos": len(all_matched_in_ad_charge) - cur_index,
+                "adBefore": last_ad.pro_desc if last_ad else None,
+                "adBeforeType": "/".join(last_classes) if last_ad else None,
+                "adAfter": next_ad.pro_desc if next_ad else None,
+                "adAfterType": "/".join(next_classes) if next_ad else None,
+                "proAfter": ad_charge.pro_after,
+            })
+
         data.append(d)
+        # logger.info(data)
     return data
 
+
+# def weekday_chinese
 
 def generate_xls_file(data):
     filename = datetime.today().strftime("%Y_%m_%d_%H_%M_%S") + ".xls"
@@ -365,7 +383,6 @@ def generate_xls_file(data):
         table.write(i, 9, d.get("tags"))
 
         table.write(i, 10, d.get("weekDay"))
-        print(d.get("date"))
         table.write(i, 11, d.get("date"))
         table.write(i, 12, d.get("time"))
         table.write(i, 13, d.get("duration"))

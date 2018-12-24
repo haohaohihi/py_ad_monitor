@@ -13,13 +13,14 @@ from ..models import Rule, Firm, AdClass, Ad, Channel
 logger = logging.getLogger("ad")
 
 
-@need_login
+@need_login()
 def get(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
         page_idx = int(data["currentPageNum"])
         page_size = int(data["pageSize"])
         query_key = data.get("key")
+        user_id = request.session["user_id"]
     except JSONDecodeError as e:
         logger.error(repr(e))
         return JsonResponse(json_format_error)
@@ -29,7 +30,8 @@ def get(request):
     except ValueError as e:
         logger.error(repr(e))
         return JsonResponse(param_format_error)
-    rules = Rule.objects.filter(name__contains=query_key, valid=1) if query_key else Rule.objects.filter(valid=1)
+    logger.info("user id:" + str(user_id))
+    rules = Rule.objects.filter(name__contains=query_key, valid=1, user_id=user_id) if query_key else Rule.objects.filter(valid=1,  user_id=user_id)
     # total = math.ceil(len(rules) / page_size)
     total = len(rules)
     rules = rules.order_by('-id')[(page_idx - 1) * page_size: page_idx * page_size]
@@ -57,17 +59,18 @@ def get(request):
     return JsonResponse(result)
 
 
-@need_login
+@need_login()
 def add(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
-        print(data)
-        exist_rule = Rule.objects.filter(name=data.get("name"), valid=0)
+        user_id = request.session["user_id"]
+        # print(data)
+        exist_rule = Rule.objects.filter(name=data.get("name"), user_id=user_id, valid=0)
         if exist_rule:
             rule = exist_rule[0]
             rule.valid = 1
         else:
-            rule = Rule(name=data.get("name"), update_date=datetime.date.today())
+            rule = Rule(name=data.get("name"), update_date=datetime.date.today(), user_id=user_id)
             if data.get("weekDay"):
                 rule.weekdays = data.get("weekDay")
             if data.get("time"):
@@ -98,7 +101,7 @@ def add(request):
     })
 
 
-@need_login
+@need_login()
 def update(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -158,7 +161,7 @@ def update(request):
     })
 
 
-@need_login
+@need_login()
 def delete(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -188,7 +191,7 @@ def delete(request):
     })
 
 
-@need_login
+@need_login()
 def hint(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -203,20 +206,35 @@ def hint(request):
     data = []
     if "厂商" == type:
         firms = Firm.objects.filter(name__contains=query_word, valid=1)
-        data = [f.name for f in firms]
+        for f in firms:
+            data.append({
+                "name": f.name,
+                "id": f.id
+            })
     elif "标签" == type:
         ads = Ad.objects.filter(tags__contains=query_word, valid=1)
         print(ads)
         tags = set()
         for a in ads:
             tags = tags.union(eval(a.tags))
-        data = list(tags)
+        for t in tags:
+            data.append({
+                "name": t
+            })
     elif "类别" == type:
         ad_class = AdClass.objects.filter(name__contains=query_word, is_using=1)
-        data = [c.name for c in ad_class]
+        for c in ad_class:
+            data.append({
+                "name": c.name,
+                "id": c.class_item_id,
+            })
     elif "频道" == type:
         channels = Channel.objects.filter(name__contains=query_word, valid=1)
-        data = [c.name for c in channels]
+        for c in channels:
+            data.append({
+                "name": c.name,
+                "id": c.id
+            })
     else:
         pass
     return JsonResponse({

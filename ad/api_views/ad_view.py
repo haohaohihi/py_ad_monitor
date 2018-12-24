@@ -14,7 +14,7 @@ logger = logging.getLogger("ad")
 
 # Create your views here.
 
-@need_login
+@need_login()
 def get(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -60,6 +60,7 @@ def get(request):
         "pageSize": page_size,
         "data": [],
     }
+    print("ads: ", ads)
     for ad in ads:
         catgs = []
         catg_id = ad.catg_id
@@ -69,13 +70,13 @@ def get(request):
             catg_id = cur_class.parent_id
         result["data"].append({
             "id": ad.id,
-            "fineClass": catgs[0],
+            "fineClass": catgs[0] if catgs else None,
             "nasIp": ad.nas_ip,
             "lamdaFileAddr": ad.file_path,
             "mainBrand": ad.brand,
-            "manufacturer": Firm.objects.get(id=ad.firm_id).name,
+            "manufacturer": Firm.objects.get(id=ad.firm_id).name if ad.firm_id else None,
             "description": ad.pro_desc,
-            "tags": ad.tags
+            "tags": ad.tags if ad.tags else "[]"
         })
     return JsonResponse(result)
 
@@ -84,7 +85,7 @@ def get_by_id(request):
     return HttpResponse("get by id")
 
 
-@need_login
+@need_login()
 def add(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -113,7 +114,7 @@ def add(request):
     })
 
 
-@need_login
+@need_login()
 def update(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -134,13 +135,13 @@ def update(request):
     ad.catg_id = data.get("catgId") or ad.catg_id
     ad.agent_id = data.get("agentId") or ad.agent_id
     ad.firm_id = data.get("manufacturerId") or ad.firm_id
-    ad.brand = data.get("mainBrand") or ad.brand
+    ad.brand = data.get("mainBrand")
     ad.file_path = data.get("lambdaFileAddr") or ad.file_path
     ad.nas_ip = data.get("nasIp") or ad.nas_ip
     ad.ver_desc = data.get("verDescription") or ad.ver_desc
     ad.lang = data.get("lang") or ad.lang
-    ad.pro_desc = data.get("description") or ad.pro_desc
-    ad.tags = data.get("tags") or ad.tags
+    ad.pro_desc = data.get("description")
+    ad.tags = data.get("tags")
     ad.save()
     return JsonResponse({
         "status": 0,
@@ -149,7 +150,7 @@ def update(request):
     })
 
 
-@need_login
+@need_login()
 def delete(request):
     try:
         data = json.loads(request.body.decode("utf-8"))

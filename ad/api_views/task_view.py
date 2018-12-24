@@ -13,7 +13,7 @@ from ..utils.decorators import need_login
 logger = logging.getLogger("ad")
 
 
-@need_login
+@need_login()
 def get(request):
     # print(request.session["user_id"])
     try:
@@ -28,8 +28,10 @@ def get(request):
     tasks = Task.objects.all()
     valid_tasks = []
     for t in tasks:
-        if t.start_time and time.strftime("%Y-%m-%d",
-                                           time.localtime(int(t.start_time ) // 1000)) == date and t.type != "refclip":
+        print(t.create_time)
+        print(time.strftime("%Y-%m-%d", time.localtime(int(t.create_time))))
+        if t.create_time and time.strftime("%Y-%m-%d",
+                                           time.localtime(int(t.create_time))) == date and t.type != "refclip":
             valid_tasks.append(t)
     data = []
     for t in valid_tasks:
@@ -51,14 +53,15 @@ def get(request):
     })
 
 
-@need_login
+@need_login()
 def add(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
-        print(data)
+        # print(data.get("startTime"))
         m_type = data.get("type")
+        # print(m_type)
         # 获取空闲的monitor
-        monitors = Monitor.objects.filter(type=m_type, has_task=0)
+        monitors = Monitor.objects.filter(type=m_type, has_task=0, problem=0)
         if not monitors:
             return JsonResponse(not_enough_monitor)
         monitor = monitors[0]
@@ -72,8 +75,8 @@ def add(request):
         with transaction.atomic():
             task = Task(is_running=0, channel_id=channel.id, monitor_id=monitor.id, type=m_type,
                         nas_ip=data.get("nas_Ip") if data.get("nas_Ip") else None,
-                        start_time=data.get("startTime") if data.get("startTime") else None,
-                        end_time=data.get("endTime") if data.get("endTime") else None,
+                        start_time=data.get("startTime") if m_type == "matchclip" and data.get("startTime") else None,
+                        end_time=data.get("endTime") if m_type == "matchclip" and data.get("endTime") else None,
                         ts_ip=data.get("ts_ip") if data.get("ts_ip") else None,
                         ts_port=data.get("port") if data.get("port") else None,
                         create_time=int(time.time()))
@@ -97,7 +100,7 @@ def add(request):
     })
 
 
-@need_login
+@need_login()
 def cancel(request):
     try:
         data = json.loads(request.body.decode("utf-8"))

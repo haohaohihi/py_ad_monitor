@@ -46,6 +46,11 @@ user_not_login = {
     "msg": "用户未登陆"
 }
 
+user_access_error = {
+    "status": -601,
+    "msg": "没有权限"
+}
+
 success = {
     "status": 0,
     "msg": "success"

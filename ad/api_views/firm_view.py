@@ -12,7 +12,7 @@ from ..models import Firm
 logger = logging.getLogger("ad")
 
 
-@need_login
+@need_login()
 def get(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -49,7 +49,7 @@ def get(request):
     return JsonResponse(result)
 
 
-@need_login
+@need_login()
 def add(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -76,7 +76,7 @@ def add(request):
     })
 
 
-@need_login
+@need_login()
 def update(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -103,7 +103,7 @@ def update(request):
     })
 
 
-@need_login
+@need_login()
 def delete(request):
     try:
         data = json.loads(request.body.decode("utf-8"))

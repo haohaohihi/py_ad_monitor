@@ -41,7 +41,7 @@ def get_first_children(parent_id):
     return result
 
 
-@need_login
+@need_login()
 def get(request):
     query_result = []
     first_classes = AdClass.objects.filter(level=0, is_using=1)
@@ -105,7 +105,7 @@ def _create_one_catg(first_catg):
     }
 
 
-@need_login
+@need_login()
 def add(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -131,7 +131,7 @@ def add(request):
     return JsonResponse(result)
 
 
-@need_login
+@need_login()
 def update(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -158,7 +158,7 @@ def update(request):
     })
 
 
-@need_login
+@need_login()
 def delete(request):
     try:
         data = json.loads(request.body.decode("utf-8"))

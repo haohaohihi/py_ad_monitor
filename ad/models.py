@@ -141,7 +141,8 @@ class User(models.Model):
 
 class Rule(models.Model):
     id = models.BigAutoField(primary_key=True)
-    name = models.CharField(unique=True, max_length=255)
+    user_id = models.BigIntegerField()
+    name = models.CharField(max_length=255)
     update_date = models.DateField()
     weekdays = models.CharField(max_length=1000)
     times = models.CharField(max_length=1000)
@@ -155,6 +156,7 @@ class Rule(models.Model):
     class Meta:
         managed = False
         db_table = 'rule'
+        unique_together = (('user_id', 'name'),)
 
 
 class Monitor(models.Model):
@@ -194,7 +196,19 @@ class AdminUser(models.Model):
     id = models.BigAutoField(primary_key=True, db_column="userid")
     username = models.CharField(max_length=255, null=False, db_column="user_name")
     password = models.CharField(max_length=255, null=False, db_column="passwd")
+    role = models.IntegerField(db_column="role")
 
     class Meta:
         managed = False
         db_table = 'user_tab'
+
+
+class UserChannel(models.Model):
+    id = models.BigAutoField(primary_key=True, db_column="id")
+    user_id = models.BigIntegerField(db_column="user_id")
+    channel_id = models.BigIntegerField(db_column="channel_id")
+
+    class Meta:
+        managed = False
+        db_table = 'user_channel'
+

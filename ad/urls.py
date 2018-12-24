@@ -51,4 +51,10 @@ urlpatterns = [
     path('user/login', user_view.login),
     path('user/logout', user_view.logout),
     path('user/need_login', user_view.need_login_msg),
+    path('user/add', user_view.add),
+    path('user/delete', user_view.delete),
+    path('user/get', user_view.get),
+    path('user/get_by_id', user_view.get_by_id),
+    path('user/update', user_view.update),
+    path('user/access_error', user_view.access_error),
 ]
