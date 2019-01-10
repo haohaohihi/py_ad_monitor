@@ -74,6 +74,24 @@ class ChannelAdCharge(models.Model):
         unique_together = (('channel_id', 'weekday', 'start_time', 'end_time', 'valid'),)
 
 
+class ChannelProgram(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    channel_id = models.BigIntegerField()
+    name = models.CharField(max_length=1000, blank=True, null=True)
+    weekday = models.IntegerField()
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    stage1 = models.IntegerField(blank=True, null=True)
+    stage2 = models.IntegerField(blank=True, null=True)
+    stage3 = models.IntegerField(blank=True, null=True)
+    valid = models.IntegerField(blank=True, null=True, default=1)
+
+    class Meta:
+        managed = False
+        db_table = 'channel_program'
+        unique_together = (('channel_id', 'weekday', 'name', 'valid'),)
+
+
 class Channel(models.Model):
     id = models.BigAutoField(primary_key=True)
     name = models.CharField(unique=True, max_length=100)
