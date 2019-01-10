@@ -1,5 +1,6 @@
 #-*- coding:utf-8 -*-
 import json
+import math
 import logging
 import os
 from datetime import datetime
@@ -11,7 +12,7 @@ from django.http import StreamingHttpResponse
 
 from ad.utils.decorators import need_login
 from ..error_msg import *
-from ..models import Ad, Firm, AdClass, Channel, ChannelAdCharge, MatchResult
+from ..models import Ad, Firm, AdClass, Channel, ChannelAdCharge, MatchResult, ChannelProgram
 
 download_dir = "download_files"
 logger = logging.getLogger("ad")
@@ -72,6 +73,46 @@ def get_ad_charge(channel_id, start_time, end_time):
     return ad_charge
 
 
+def get_pre_aft_programs(channel_id, start_time, end_time):
+    """
+    查找一个广告的前后节目表
+    :param channel_id: 频道id
+    :param start_time: 广告开始时间，类型为datetime
+    :param end_time: 广告结束时间，类型为datetime
+    :return: pre, aft，两个ChannelProgram元素组成的元组
+    """
+
+    weekday = start_time.weekday() + 1
+    programs = ChannelProgram.objects.filter(channel_id=channel_id).order_by('start_time')
+    pre_programs = []
+    aft_programs = []
+    for p in programs:
+        if p.end_time <= start_time.time():
+            pre_programs.append(p)
+        if p.start_time >= end_time.time():
+            aft_programs.append(p)
+    pre = pre_programs[-1] if pre_programs else None
+    aft = aft_programs[0] if aft_programs else None
+    return pre, aft
+
+def get_all_results_in_stage(channel_id, start_date_time, end_date_time):
+    """
+    查找在两个时间点之间的所有匹配结果
+    :param channel_id: 频道id
+    :param start_date_time: 开始时间，类型为datetime
+    :param end_date_time: 结束时间，类型为datetime
+    :return:
+    """
+    if not start_date_time or not end_date_time:
+        return None
+    results = MatchResult.objects.filter(channel_id=channel_id).order_by('start_time')
+    temp = []
+    for r in results:
+        if r.start_time.replace(tzinfo=None) >= start_date_time and r.end_time.replace(tzinfo=None) <= end_date_time:
+            temp.append(r)
+    return temp
+
+
 def get_fee(ad_charge, seconds):
     if seconds <= 5:
         return ad_charge.stage1
@@ -116,7 +157,10 @@ def get(request):
     data = generate_match_data(channel_names, class_names, cover_areas, dates, firm_names, tags, times, weekdays)
     if data:
         return JsonResponse({
-            "data": data,
+            "data": data[page_size * (page_idx - 1): page_size * page_idx],
+            "pageSize": int(math.ceil(len(data) / page_size)),
+            "currentPageNum": page_idx,
+            "total": len(data),
             "status": 0,
             "msg": "success"
         })
@@ -128,8 +172,6 @@ def get(request):
 def download(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
-        page_idx = int(data["currentPageNum"])
-        page_size = data.get("pageSize") or 8
         dates = data.get("date")
         weekdays = data.get("weekDay")
         cover_areas = data.get("coverArea")
@@ -264,8 +306,6 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
         ad_classes = get_classes_by_ad(ad)
         logger.info(ad_classes)
 
-        ad_charge = get_ad_charge(channel.id, r.start_time, r.end_time)
-
         d = {
             "date": r.start_time.strftime("%Y-%m-%d"),
             "time": r.start_time.strftime("%H:%M:%S"),
@@ -288,38 +328,76 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
             "nasIp": ad.nas_ip
         }
 
-        if ad_charge:
+        # logger.info(r.start_time, r.end_time)
+        pre_program, aft_program = get_pre_aft_programs(channel.id, r.start_time, r.end_time)
+        # logger.info("pre", pre_program.name, pre_program.start_time, pre_program.end_time)
+        # logger.info("aft", aft_program.name, aft_program.start_time, aft_program.end_time)
+        stage_start_time = pre_program.end_time if pre_program else r.start_time.time().replace(0,0,0,0)        # 类型为datetime.time()
+        stage_end_time = aft_program.start_time if aft_program else r.end_time.time().replace(23,59,59,999999)
+        # logger.info(stage_start_time, stage_end_time)
+        # 查询在两个节目间的所有广告结果（已经排好序）
+        all_results_in_stage = get_all_results_in_stage(channel.id, datetime.combine(r.start_time.date(), stage_start_time), datetime.combine(r.start_time.date(), stage_end_time))
+        # logger.info(len(all_results_in_stage))
+        cur_index = all_results_in_stage.index(r)
 
-            # 频道收费相关信息
-            ad_charge = ad_charge[0]
+        # 查找同一阶段前后广告信息
+        pre_result = None if cur_index == 0 else all_results_in_stage[cur_index - 1]
+        pre_ad = Ad.objects.get(id=pre_result.ad_id) if pre_result else None
+        pre_classes = get_classes_by_ad(pre_ad) if pre_ad else None
+        next_result = None if cur_index == (len(all_results_in_stage) - 1) else all_results_in_stage[ cur_index + 1]
+        next_ad = Ad.objects.get(id=next_result.ad_id) if next_result else None
+        next_classes = get_classes_by_ad(next_ad) if next_ad else None
 
-            all_matched_in_ad_charge = get_all_matched_in_ad_charge(ad_charge)
-            cur_index = all_matched_in_ad_charge.index(r)
-            last_result = None if cur_index == 0 else all_matched_in_ad_charge[cur_index - 1]
-            last_ad = Ad.objects.get(id=last_result.ad_id) if last_result else None
-            last_classes = get_classes_by_ad(last_ad) if last_ad else None
+        d.update({
+            "fee": get_fee(pre_program, (r.end_time - r.start_time).seconds),
+            "preDate": "",
+            "proBefore": pre_program.name,
+            "totalPos": len(all_results_in_stage),
+            "pPos": cur_index + 1,
+            "nPos": len(all_results_in_stage) - cur_index,
+            "adBefore": pre_ad.pro_desc if pre_ad else None,
+            "adBeforeType": "/".join(pre_classes) if pre_classes else None,
+            "adAfter": next_ad.pro_desc if next_ad else None,
+            "adAfterType": "/".join(next_classes) if next_ad else None,
+            "proAfter": aft_program.name,
+        })
 
-            next_result = None if cur_index == (len(all_matched_in_ad_charge) - 1) else all_matched_in_ad_charge[
-                cur_index + 1]
-            next_ad = Ad.objects.get(id=next_result.ad_id) if next_result else None
-            next_classes = get_classes_by_ad(next_ad) if next_ad else None
-
-            d.update({
-                "fee": get_fee(ad_charge, (r.end_time - r.start_time).seconds),
-                "preDate": "",
-                "proBefore": ad_charge.pro_before,
-                "totalPos": len(all_matched_in_ad_charge),
-                "pPos": cur_index + 1,
-                "nPos": len(all_matched_in_ad_charge) - cur_index,
-                "adBefore": last_ad.pro_desc if last_ad else None,
-                "adBeforeType": "/".join(last_classes) if last_ad else None,
-                "adAfter": next_ad.pro_desc if next_ad else None,
-                "adAfterType": "/".join(next_classes) if next_ad else None,
-                "proAfter": ad_charge.pro_after,
-            })
+        # ad_charge = get_ad_charge(channel.id, r.start_time, r.end_time)
+        #
+        # if ad_charge:
+        #
+        #     # 频道收费相关信息
+        #     ad_charge = ad_charge[0]
+        #     # print(type(ad_charge.start_time))
+        #     all_matched_in_ad_charge = get_all_matched_in_ad_charge(ad_charge)
+        #     cur_index = all_matched_in_ad_charge.index(r)
+        #     last_result = None if cur_index == 0 else all_matched_in_ad_charge[cur_index - 1]
+        #     last_ad = Ad.objects.get(id=last_result.ad_id) if last_result else None
+        #     last_classes = get_classes_by_ad(last_ad) if last_ad else None
+        #
+        #     next_result = None if cur_index == (len(all_matched_in_ad_charge) - 1) else all_matched_in_ad_charge[
+        #         cur_index + 1]
+        #     next_ad = Ad.objects.get(id=next_result.ad_id) if next_result else None
+        #     next_classes = get_classes_by_ad(next_ad) if next_ad else None
+        #
+        #     d.update({
+        #         "fee": get_fee(ad_charge, (r.end_time - r.start_time).seconds),
+        #         "preDate": "",
+        #         "proBefore": ad_charge.pro_before,
+        #         "totalPos": len(all_matched_in_ad_charge),
+        #         "pPos": cur_index + 1,
+        #         "nPos": len(all_matched_in_ad_charge) - cur_index,
+        #         "adBefore": last_ad.pro_desc if last_ad else None,
+        #         "adBeforeType": "/".join(last_classes) if last_ad else None,
+        #         "adAfter": next_ad.pro_desc if next_ad else None,
+        #         "adAfterType": "/".join(next_classes) if next_ad else None,
+        #         "proAfter": ad_charge.pro_after,
+        #     })
 
         data.append(d)
         # logger.info(data)
+    # print(data[0])
+    data.sort(key=lambda d : datetime.strptime(d['time'], "%H:%M:%S").time())
     return data
 
 
