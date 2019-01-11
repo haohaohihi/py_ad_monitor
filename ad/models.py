@@ -89,7 +89,7 @@ class ChannelProgram(models.Model):
     class Meta:
         managed = False
         db_table = 'channel_program'
-        unique_together = (('channel_id', 'weekday', 'name', 'valid'),)
+        unique_together = (('channel_id', 'weekday', 'name', 'start_time', 'valid'),)
 
 
 class Channel(models.Model):
