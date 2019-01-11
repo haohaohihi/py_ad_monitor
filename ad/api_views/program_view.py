@@ -58,7 +58,7 @@ def add(request):
     try:
         data = json.loads(request.body.decode("utf-8"))
         exist_program = ChannelProgram.objects.filter(channel_id=data.get("channelId"), weekday=data.get("weekDay"),
-                                                      name=data.get("name"), valid=0)
+                                                      name=data.get("name"), start_time=data.get("startTime"), valid=0)
         if exist_program:
             # 处理删除后创建新的，然后再删除时，由于unique约束导致的失败
             program = exist_program[0]
