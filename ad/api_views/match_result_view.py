@@ -3,6 +3,7 @@ import json
 import math
 import logging
 import os
+import os.path
 from datetime import datetime
 from json import JSONDecodeError
 
@@ -15,6 +16,8 @@ from ..error_msg import *
 from ..models import Ad, Firm, AdClass, Channel, ChannelAdCharge, MatchResult, ChannelProgram
 
 download_dir = "download_files"
+if not os.path.exists(download_dir):
+    os.mkdir(download_dir)
 logger = logging.getLogger("ad")
 
 

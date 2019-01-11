@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 import os
+import os.path
 import sys
 
 if __name__ == "__main__":
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ad_monitor.settings")
+    if not os.path.exists("log"):
+        os.mkdir("log")
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
