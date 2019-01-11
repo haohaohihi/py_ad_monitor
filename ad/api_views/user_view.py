@@ -86,6 +86,7 @@ def get(request):
         result["data"].append({
             "id": u.id,
             "name": u.username,
+            "role": u.role,
             "channels":[get_channel_dict(uc.channel_id) for uc in UserChannel.objects.filter(user_id=u.id)],
         })
     return JsonResponse(result)
