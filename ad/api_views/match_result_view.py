@@ -114,6 +114,8 @@ def get_all_results_in_stage(channel_id, start_date_time, end_date_time):
 
 
 def get_fee(ad_charge, seconds):
+    if not ad_charge:
+        return 0
     if seconds <= 5:
         return ad_charge.stage1
     elif 5 < seconds <= 10:
@@ -349,9 +351,9 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
         next_classes = get_classes_by_ad(next_ad) if next_ad else None
 
         d.update({
-            "fee": get_fee(pre_program, (r.end_time - r.start_time).seconds),
+            "fee": get_fee(pre_program, (r.end_time - r.start_time).seconds) if pre_program else None,
             "preDate": "",
-            "proBefore": pre_program.name,
+            "proBefore": pre_program.name if pre_program else None,
             "totalPos": len(all_results_in_stage),
             "pPos": cur_index + 1,
             "nPos": len(all_results_in_stage) - cur_index,
@@ -359,7 +361,7 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
             "adBeforeType": "/".join(pre_classes) if pre_classes else None,
             "adAfter": next_ad.pro_desc if next_ad else None,
             "adAfterType": "/".join(next_classes) if next_ad else None,
-            "proAfter": aft_program.name,
+            "proAfter": aft_program.name if aft_program else None,
         })
 
         # ad_charge = get_ad_charge(channel.id, r.start_time, r.end_time)

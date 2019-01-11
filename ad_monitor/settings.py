@@ -112,7 +112,7 @@ DATABASES = {
         'NAME': 'ads',
         'USER': 'root',
         'PASSWORD': '123456',
-        'HOST': '115.28.61.129',
+        'HOST': '127.0.0.1',
     }
 }
 
