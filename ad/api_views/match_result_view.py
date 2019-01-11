@@ -158,7 +158,7 @@ def get(request):
     if data:
         return JsonResponse({
             "data": data[page_size * (page_idx - 1): page_size * page_idx],
-            "pageSize": int(math.ceil(len(data) / page_size)),
+            "pageSize": page_size,
             "currentPageNum": page_idx,
             "total": len(data),
             "status": 0,

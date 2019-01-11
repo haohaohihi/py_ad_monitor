@@ -63,8 +63,7 @@ def add(request):
             # 处理删除后创建新的，然后再删除时，由于unique约束导致的失败
             program = exist_program[0]
             program.valid = 1
-        elif not (data.get("channelId") and data.get("weekDay") and data.get("name") and data.get("startTime") and
-                  data.get("endTime") and data.get("stage1") and data.get("stage2") and data.get("stage3")):
+        elif not (data.get("channelId") and data.get("weekDay") and data.get("name") and data.get("startTime") and data.get("endTime")):
             return JsonResponse(lack_param_error)
         else:
             program = ChannelProgram(channel_id=data.get("channelId"), weekday=data.get("weekDay"),
