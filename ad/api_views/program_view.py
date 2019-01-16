@@ -29,7 +29,7 @@ def get(request):
     except ValueError as e:
         logger.error(repr(e))
         return JsonResponse(param_format_error)
-    programs = ChannelProgram.objects.filter(channel_id=channel_id, valid=1)
+    programs = ChannelProgram.objects.filter(channel_id=channel_id, valid=1).order_by('weekday', 'start_time')
     data = []
     for c in programs:
         data.append({

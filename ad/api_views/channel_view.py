@@ -31,7 +31,7 @@ def get(request):
         return JsonResponse(param_format_error)
 
     # 在valide=1（表示存在）的数据中进行下一步过滤
-    channels = Channel.objects.filter(valid=1)
+    channels = Channel.objects.filter(valid=1).order_by('-id')
     if data.get("name") and data.get("name")[0]:
         channel_name = data.get("name")[0]
         channels = channels.filter(name__icontains=channel_name)
