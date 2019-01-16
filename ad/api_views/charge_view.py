@@ -29,7 +29,7 @@ def get(request):
     except ValueError as e:
         logger.error(repr(e))
         return JsonResponse(param_format_error)
-    charges = ChannelAdCharge.objects.filter(channel_id=channel_id, valid=1)
+    charges = ChannelAdCharge.objects.filter(channel_id=channel_id, valid=1).order_by('-id')
     data = []
     for c in charges:
         data.append({

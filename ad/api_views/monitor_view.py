@@ -6,7 +6,7 @@ from ..models import Monitor
 
 @need_login()
 def status(request):
-    monitors = Monitor.objects.all()
+    monitors = Monitor.objects.all().order_by('id')
     data = []
     for m in monitors:
         data.append({

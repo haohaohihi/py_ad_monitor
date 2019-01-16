@@ -31,7 +31,7 @@ def get(request):
         logger.error(repr(e))
         return JsonResponse(param_format_error)
     if not query_key:
-        ads = Ad.objects.filter(valid=1)
+        ads = Ad.objects.filter(valid=1).order_by('-id')
     else:
         # 按照品牌过滤
         q_ads_1 = Ad.objects.filter(brand__contains=query_key, valid=1)
