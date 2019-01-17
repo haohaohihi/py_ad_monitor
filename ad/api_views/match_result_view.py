@@ -12,7 +12,8 @@ from django.http import StreamingHttpResponse
 
 from ad.utils.decorators import need_login
 from ..error_msg import *
-from ..models import Ad, Firm, AdClass, Channel, ChannelAdCharge, MatchResult, ChannelProgram
+from ..models import Ad, Firm, AdClass, Channel, ChannelAdCharge, MatchResult, ChannelProgram, AdminUser, UserChannel
+from ..user_roles import *
 
 download_dir = "download_files"
 logger = logging.getLogger("ad")
@@ -149,6 +150,7 @@ def get(request):
         tags = data.get("tag")
         class_names = data.get("category")
         channel_names = data.get("channel")
+        user_id = request.session["user_id"]
     except JSONDecodeError as e:
         logger.error(repr(e))
         return JsonResponse(json_format_error)
@@ -156,7 +158,16 @@ def get(request):
         logger.error(repr(e))
         return JsonResponse(system_error)
 
-    data = generate_match_data(channel_names, class_names, cover_areas, dates, firm_names, tags, times, weekdays)
+    user = AdminUser.objects.get(id=user_id)
+    print(user.role)
+    if user.role >= USER_ADMIN:
+        user_channel_ids = [c.id for c in Channel.objects.all()]
+    else:
+        user_channel_ids = [c.channel_id for c in UserChannel.objects.filter(user_id=user_id)]
+    logger.info(user_channel_ids)
+
+    data = generate_match_data(channel_names, class_names, cover_areas, dates, firm_names, tags, times, weekdays, user_channel_ids)
+
     if data:
         return JsonResponse({
             "data": data[page_size * (page_idx - 1): page_size * page_idx],
@@ -182,7 +193,17 @@ def download(request):
         tags = data.get("tag")
         class_names = data.get("category")
         channel_names = data.get("channel")
-        data = generate_match_data(channel_names, class_names, cover_areas, dates, firm_names, tags, times, weekdays)
+        user_id = request.session["user_id"]
+
+        user = AdminUser.objects.get(id=user_id)
+        print(user.role)
+        if user.role >= USER_ADMIN:
+            user_channel_ids = [c.id for c in Channel.objects.all()]
+        else:
+            user_channel_ids = [c.channel_id for c in UserChannel.objects.filter(user_id=user_id)]
+        logger.info(user_channel_ids)
+
+        data = generate_match_data(channel_names, class_names, cover_areas, dates, firm_names, tags, times, weekdays, user_channel_ids)
         if data:
             filename = generate_xls_file(data)
             response = StreamingHttpResponse(file_iterator(os.path.join(download_dir, filename)))  # 这里创建返回
@@ -199,12 +220,12 @@ def download(request):
         return JsonResponse(data_not_exist_error)
 
 
-def generate_match_data(channel_names, class_names, cover_areas, dates, firm_names, tags, times, weekdays):
+def generate_match_data(channel_names, class_names, cover_areas, dates, firm_names, tags, times, weekdays, user_channel_ids):
     # 过滤channels, 模糊过滤
     if channel_names and channel_names[0]:
-        channels = Channel.objects.filter(name__contains=channel_names[0], valid=1)
+        channels = Channel.objects.filter(name__contains=channel_names[0], valid=1, id__in=user_channel_ids)
     else:
-        channels = Channel.objects.filter(valid=1)
+        channels = Channel.objects.filter(valid=1, id__in=user_channel_ids)
     # print(channels)
     # 过滤区域
     if cover_areas and cover_areas[0] and cover_areas[1] and cover_areas[2]:
@@ -364,42 +385,8 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
             "proAfter": aft_program.name if aft_program else None,
         })
 
-        # ad_charge = get_ad_charge(channel.id, r.start_time, r.end_time)
-        #
-        # if ad_charge:
-        #
-        #     # 频道收费相关信息
-        #     ad_charge = ad_charge[0]
-        #     # print(type(ad_charge.start_time))
-        #     all_matched_in_ad_charge = get_all_matched_in_ad_charge(ad_charge)
-        #     cur_index = all_matched_in_ad_charge.index(r)
-        #     last_result = None if cur_index == 0 else all_matched_in_ad_charge[cur_index - 1]
-        #     last_ad = Ad.objects.get(id=last_result.ad_id) if last_result else None
-        #     last_classes = get_classes_by_ad(last_ad) if last_ad else None
-        #
-        #     next_result = None if cur_index == (len(all_matched_in_ad_charge) - 1) else all_matched_in_ad_charge[
-        #         cur_index + 1]
-        #     next_ad = Ad.objects.get(id=next_result.ad_id) if next_result else None
-        #     next_classes = get_classes_by_ad(next_ad) if next_ad else None
-        #
-        #     d.update({
-        #         "fee": get_fee(ad_charge, (r.end_time - r.start_time).seconds),
-        #         "preDate": "",
-        #         "proBefore": ad_charge.pro_before,
-        #         "totalPos": len(all_matched_in_ad_charge),
-        #         "pPos": cur_index + 1,
-        #         "nPos": len(all_matched_in_ad_charge) - cur_index,
-        #         "adBefore": last_ad.pro_desc if last_ad else None,
-        #         "adBeforeType": "/".join(last_classes) if last_ad else None,
-        #         "adAfter": next_ad.pro_desc if next_ad else None,
-        #         "adAfterType": "/".join(next_classes) if next_ad else None,
-        #         "proAfter": ad_charge.pro_after,
-        #     })
-
         data.append(d)
         # logger.info(data)
-    # print(data[0])
-    # data.sort(key=lambda d : datetime.strptime(d['time'], "%H:%M:%S").time())
     return data
 
 
