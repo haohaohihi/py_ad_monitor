@@ -214,12 +214,12 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
     channel_ids = [channel.id for channel in channels]
     logger.info(channel_ids)
     # print(channel_ids)
-    match_results = MatchResult.objects.filter(channel_id__in=channel_ids, valid=1)
-    logger.info(match_results)
+    match_results = MatchResult.objects.filter(channel_id__in=channel_ids, valid=1).order_by('channel_id', 'start_time')
+    # logger.info(match_results)
     # print(match_results)
     # 过滤日期+时间
-    logger.info(dates)
-    logger.info(times)
+    # logger.info(dates)
+    # logger.info(times)
     data_time_null = ["", ""]
     # 只有日期
     if dates and dates != data_time_null and (not times or times == data_time_null):
@@ -257,7 +257,7 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
             if (cur_date - r.start_time.replace(tzinfo=None)).days <= 30:
                 temp_match_result.append(r)
         match_results = temp_match_result
-    logger.info(match_results)
+    # logger.info(match_results)
     # 过滤星期几
     if weekdays:
         temp_match_result = []
@@ -269,7 +269,7 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
             if r.start_time.isoweekday() % 7 in weekdays:
                 temp_match_result.append(r)
         match_results = temp_match_result
-    logger.info(match_results)
+    # logger.info(match_results)
     # 过滤厂商
     if firm_names:
         temp_match_result = []
@@ -278,7 +278,7 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
                 if Firm.objects.filter(id=Ad.objects.get(id=r.ad_id).firm_id, name__contains=name, valid=1):
                     temp_match_result.append(r)
         match_results = temp_match_result
-    logger.info(match_results)
+    # logger.info(match_results)
     # 过滤标签
     if tags:
         temp_match_result = []
@@ -287,7 +287,7 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
                 if Ad.objects.filter(id=r.ad_id, tags__contains=tag, valid=1):
                     temp_match_result.append(r)
         match_results = temp_match_result
-    logger.info(match_results)
+    # logger.info(match_results)
     # 过滤分类
     if class_names:
         # [bug fixed] 改成set，避免重复数据
@@ -298,7 +298,7 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
                 if c_name in get_classes_by_ad(ad):
                     temp_match_result.add(r)
         match_results = temp_match_result
-    logger.info(match_results)
+    # logger.info(match_results)
     ## 组装数据
     data = []
     for r in match_results:
@@ -399,7 +399,7 @@ def generate_match_data(channel_names, class_names, cover_areas, dates, firm_nam
         data.append(d)
         # logger.info(data)
     # print(data[0])
-    data.sort(key=lambda d : datetime.strptime(d['time'], "%H:%M:%S").time())
+    # data.sort(key=lambda d : datetime.strptime(d['time'], "%H:%M:%S").time())
     return data
 
 
