@@ -223,10 +223,11 @@ def download(request):
 def generate_match_data(channel_names, class_names, cover_areas, dates, firm_names, tags, times, weekdays, user_channel_ids):
     # 过滤channels, 模糊过滤
     if channel_names and channel_names[0]:
-        channels = Channel.objects.filter(name__contains=channel_names[0], valid=1, id__in=user_channel_ids)
+        channels = Channel.objects.filter(name__in=channel_names, valid=1, id__in=user_channel_ids)
     else:
         channels = Channel.objects.filter(valid=1, id__in=user_channel_ids)
     # print(channels)
+
     # 过滤区域
     if cover_areas and cover_areas[0] and cover_areas[1] and cover_areas[2]:
         channels = channels.filter(cover_area=cover_areas[0], cover_province=cover_areas[1], cover_city=cover_areas[2])
