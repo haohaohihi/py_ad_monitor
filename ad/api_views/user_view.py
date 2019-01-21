@@ -87,7 +87,7 @@ def get(request):
             "id": u.id,
             "name": u.username,
             "role": u.role,
-            "channels":[get_channel_dict(uc.channel_id) for uc in UserChannel.objects.filter(user_id=u.id)],
+            "channels": [get_channel_dict(uc.channel_id) for uc in UserChannel.objects.filter(user_id=u.id)],
         })
     return JsonResponse(result)
 
@@ -193,6 +193,7 @@ def delete(request):
         "msg": "删除数据成功",
     })
 
+
 @need_login()
 @need_access()
 def update(request):
@@ -223,6 +224,38 @@ def update(request):
         "msg": "更新数据成功",
         "user_id": idx
     })
+
+
+@need_login()
+def change_password(request):
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+        print(data)
+        user_id = data.get("user_id")
+        new_password = data.get("new_password")
+        new_password = base64.b64decode(new_password).decode("utf-8")
+    except JSONDecodeError as e:
+        logger.error(repr(e))
+        return JsonResponse(json_format_error)
+    except Exception as e:
+        logger.error(repr(e))
+        return JsonResponse(param_repeat_error)
+    cur_user_id = request.session["user_id"]
+    if user_id >= USER_ADMIN or cur_user_id == user_id:
+        user = AdminUser.objects.get(id=user_id)
+        user.password = new_password
+        user.save()
+        return JsonResponse({
+            "status": 0,
+            "msg": "修改成功",
+            "user_id": user.id
+        })
+    else:
+        return JsonResponse({
+            "status": -200,
+            "msg": "没有权限",
+            "user_id": user_id
+        })
 
 
 def _create_user(username, password, role):
