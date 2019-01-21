@@ -63,4 +63,5 @@ urlpatterns = [
     path('user/get_by_id', user_view.get_by_id),
     path('user/update', user_view.update),
     path('user/access_error', user_view.access_error),
+    path('user/change_password', user_view.change_password),
 ]
