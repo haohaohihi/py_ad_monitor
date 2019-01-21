@@ -237,17 +237,17 @@ def change_password(request):
     except JSONDecodeError as e:
         logger.error(repr(e))
         return JsonResponse(json_format_error)
-    except Exception as e:
-        logger.error(repr(e))
-        return JsonResponse(param_repeat_error)
+
     cur_user_id = request.session["user_id"]
-    if user_id >= USER_ADMIN or cur_user_id == user_id:
+    cur_user = AdminUser.objects.get(id=cur_user_id)
+
+    if cur_user.role >= USER_ADMIN or cur_user_id == user_id:
         user = AdminUser.objects.get(id=user_id)
         user.password = new_password
         user.save()
         return JsonResponse({
             "status": 0,
-            "msg": "修改成功",
+            "msg": "密码修改成功",
             "user_id": user.id
         })
     else:
