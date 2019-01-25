@@ -72,6 +72,15 @@ def add(request):
             return JsonResponse(channel_not_found)
         channel = channels[0]
 
+        existed_tasks = Task.objects.filter(channel_id=channel.id, type=m_type, nas_ip=data.get("nas_Ip"), is_running__in=[0, 1, 3, 6])
+
+        if len(existed_tasks) > 0:
+            return JsonResponse({
+                "id": existed_tasks[0].id,
+                "status": -401,
+                "msg": "已有相同任务在处理中"
+            })
+
         with transaction.atomic():
             task = Task(is_running=0, channel_id=channel.id, monitor_id=monitor.id, type=m_type,
                         nas_ip=data.get("nas_Ip") if data.get("nas_Ip") else None,
