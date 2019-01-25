@@ -44,7 +44,8 @@ def get(request):
             "startTime": t.start_time,
             "endTime": t.end_time,
             "ts_ip": t.ts_ip,
-            "port": t.ts_port
+            "port": t.ts_port,
+            "create_time": t.create_time
         })
     return JsonResponse({
         "status": 0,
@@ -133,4 +134,28 @@ def cancel(request):
         "status": 0,
         "msg": "success",
         "id": task.id
+    })
+
+
+# @need_login
+def get_all_running(request):
+    all = Task.objects.filter(is_running__in=[0, 1, 3, 6])
+    data = []
+    for t in all:
+        data.append({
+            "id": t.id,
+            "channel": Channel.objects.get(id=t.channel_id).name,
+            "type": t.type,
+            "is_running": t.is_running,
+            "nas_Ip": t.nas_ip,
+            "startTime": t.start_time,
+            "endTime": t.end_time,
+            "ts_ip": t.ts_ip,
+            "port": t.ts_port,
+            "create_time": t.create_time
+        })
+    return JsonResponse({
+        "status": 0,
+        "msg": "success",
+        "data": data
     })

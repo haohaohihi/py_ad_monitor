@@ -53,6 +53,7 @@ urlpatterns = [
     path('task/add', task_view.add),
     path('task/get', task_view.get),
     path('task/cancel', task_view.cancel),
+    path('task/get_all_running', task_view.get_all_running),
 
     path('user/login', user_view.login),
     path('user/logout', user_view.logout),
