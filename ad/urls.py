@@ -1,5 +1,6 @@
 from django.urls import path
 
+from ad.api_views import config_view
 from .api_views import ad_class_view, channel_view, charge_view, ad_view, firm_view, \
     rule_view, match_result_view, monitor_view, task_view, user_view, program_view
 
@@ -65,4 +66,7 @@ urlpatterns = [
     path('user/update', user_view.update),
     path('user/access_error', user_view.access_error),
     path('user/change_password', user_view.change_password),
+
+    path('config/get', config_view.get),
+    path('config/update', config_view.update),
 ]

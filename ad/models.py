@@ -204,6 +204,7 @@ class Task(models.Model):
     ts_ip = models.CharField(max_length=255, null=False, db_column="ts_ip")
     ts_port = models.IntegerField(db_column="port")
     create_time = models.CharField(max_length=255, db_column='create_time')
+    threshold = models.FloatField(db_column='threshold')
 
     class Meta:
         managed = False
@@ -230,3 +231,11 @@ class UserChannel(models.Model):
         managed = False
         db_table = 'user_channel'
 
+
+class Config(models.Model):
+    id = models.BigAutoField(primary_key=True, db_column="id")
+    auto_delete_day_interval_days = models.IntegerField(db_column='auto_delete_day_interval_days')
+
+    class Meta:
+        managed = False
+        db_table = 'config_info'

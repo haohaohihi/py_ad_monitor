@@ -84,6 +84,7 @@ def add(request):
 
         with transaction.atomic():
             task = Task(is_running=0, channel_id=channel.id, monitor_id=monitor.id, type=m_type,
+                        threshold=data.get("threshold") if data.get("threshold") else None,
                         nas_ip=data.get("nas_Ip") if data.get("nas_Ip") else None,
                         start_time=data.get("startTime") if m_type == "matchclip" and data.get("startTime") else None,
                         end_time=data.get("endTime") if m_type == "matchclip" and data.get("endTime") else None,
